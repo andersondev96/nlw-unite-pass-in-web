@@ -1,8 +1,10 @@
 import dayjs from 'dayjs'
 import 'dayjs/locale/pt-br'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal, Search } from 'lucide-react'
+import { ArrowDownUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react'
 import { ChangeEvent, useEffect, useState } from 'react'
+import { Button } from './button'
+import { Dropdown } from './dropdown'
 import { IconButton } from './icon-button'
 import { Table } from './table/table'
 import { TableCell } from './table/table-cell'
@@ -12,7 +14,7 @@ import { TableRow } from './table/table-row'
 dayjs.extend(relativeTime)
 dayjs.locale('pt-br')
 
-interface Attendee {
+export interface Attendee {
 	id: string
 	name: string
 	email: string
@@ -21,9 +23,11 @@ interface Attendee {
 }
 
 export function AttendeeList() {
+	const [orderByColumDirection, setOrderByColumnDirection] = useState(false)
+
 	const [search, setSearch] = useState(() => {
 		const url = new URL(window.location.toString())
-		
+
 		if (url.searchParams.has('search')) {
 			return url.searchParams.get('search') ?? ''
 		}
@@ -33,7 +37,7 @@ export function AttendeeList() {
 
 	const [page, setPage] = useState(() => {
 		const url = new URL(window.location.toString())
-		
+
 		if (url.searchParams.has('page')) {
 			return Number(url.searchParams.get('page'))
 		}
@@ -47,7 +51,7 @@ export function AttendeeList() {
 	const totalPages = Math.ceil(total / 10)
 
 	useEffect(() => {
-		const url = new URL('http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees')
+		const url = new URL('http://localhost:3333/events/cb0e032a-fd91-440c-8093-34ae7b8566e7/attendees')
 
 		url.searchParams.set('pageIndex', String(page - 1))
 
@@ -58,6 +62,7 @@ export function AttendeeList() {
 		fetch(url)
 			.then(response => response.json())
 			.then(data => {
+				console.log(data)
 				setAttendees(data.attendees)
 				setTotal(data.total)
 			})
@@ -83,6 +88,20 @@ export function AttendeeList() {
 		setPage(page)
 	}
 
+	function orderByColumn(column: string, ascending: boolean = true) {
+		const url = new URL(`http://localhost:3333/events/cb0e032a-fd91-440c-8093-34ae7b8566e7/attendees`)
+
+		url.searchParams.set('orderByColumn', column)
+		url.searchParams.set('orderByDirection', ascending ? 'asc' : 'desc')
+
+		fetch(url)
+			.then(response => response.json())
+			.then(data => {
+				setAttendees(data.attendees)
+				setTotal(data.total)
+			})
+	}
+
 
 	function onSearchInputOnChanged(event: ChangeEvent<HTMLInputElement>) {
 		setCurrentSearch(event.target.value)
@@ -90,21 +109,21 @@ export function AttendeeList() {
 	}
 
 	function goToFirstPage() {
-		setCurrentPage(1)	
+		setCurrentPage(1)
 	}
 
 	function goToLastPage() {
-		setCurrentPage(totalPages)	
+		setCurrentPage(totalPages)
 	}
 
 	function goToPreviousPage() {
-		setCurrentPage(page - 1)	
+		setCurrentPage(page - 1)
 	}
 
 	function goToNextPage() {
 		setCurrentPage(page + 1)
-		
-		
+
+
 	}
 
 	return (
@@ -113,13 +132,14 @@ export function AttendeeList() {
 				<h1 className="text-2xl font-bold">Participantes</h1>
 				<div className="px-3 w-72 py-1.5 border border-white/10 rounded-lg flex items-center gap-3">
 					<Search className="size-4 text-emerald-300" />
-					<input 
+					<input
 						onChange={onSearchInputOnChanged}
-						value={search} 
-						className="bg-transparent flex-1 outline-none border-0 p-0 text-sm focus:ring-0" 
-						placeholder="Buscar participantes..." 
+						value={search}
+						className="bg-transparent flex-1 outline-none border-0 p-0 text-sm focus:ring-0"
+						placeholder="Buscar participantes..."
 					/>
 				</div>
+				<Button />
 			</div>
 
 			<Table>
@@ -128,10 +148,42 @@ export function AttendeeList() {
 						<TableHeader style={{ width: 48 }}>
 							<input type="checkbox" className='size-4 bg-black/20 rounded border border-white/10' />
 						</TableHeader>
-						<TableHeader>Código</TableHeader>
-						<TableHeader>Participante</TableHeader>
-						<TableHeader>Data de inscrição</TableHeader>
-						<TableHeader>Data do check-in</TableHeader>
+						<TableHeader>
+							<div className="flex items-center justify-between">
+								Código
+								<ArrowDownUp
+									size={18} 
+									onClick={() => orderByColumn('id', !!orderByColumDirection)}
+									/>
+							</div>
+						</TableHeader>
+						<TableHeader>
+							<div className="flex items-center justify-between">
+								Participantes
+								<ArrowDownUp 
+									size={18} 
+									onClick={() => orderByColumn('name', !!orderByColumDirection)}
+								/>
+							</div>
+						</TableHeader>
+						<TableHeader>
+							<div className="flex items-center justify-between">
+								Data de inscrição
+								<ArrowDownUp 
+									size={18} 
+									onClick={() => orderByColumn('createdAt', !!orderByColumDirection)}
+									/>
+							</div>
+						</TableHeader>
+						<TableHeader>
+							<div className="flex items-center justify-between">
+								Data do check-in
+								<ArrowDownUp 
+									size={18} 
+									onClick={() => orderByColumn('checkedInAt', !!orderByColumDirection)}
+									/>
+							</div>
+						</TableHeader>
 						<TableHeader style={{ width: 64 }}></TableHeader>
 					</tr>
 				</thead>
@@ -151,15 +203,13 @@ export function AttendeeList() {
 								</TableCell>
 								<TableCell>{dayjs().to(attendee.createdAt)}</TableCell>
 								<TableCell>
-									{attendee.checkedInAt === null 
-										? <span className='text-zinc-400'>Não fez check-in</span> 
+									{attendee.checkedInAt === null
+										? <span className='text-zinc-400'>Não fez check-in</span>
 										: dayjs().to(attendee.checkedInAt)
 									}
 								</TableCell>
 								<TableCell>
-									<IconButton transparent>
-										<MoreHorizontal className="size-4" />
-									</IconButton>
+									<Dropdown attendee={attendee} />
 								</TableCell>
 							</TableRow>
 						)
