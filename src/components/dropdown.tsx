@@ -4,9 +4,10 @@ import { Attendee } from './attendee-list';
 
 interface DropdownProps {
   attendee: Attendee
+  onUpdateList: () => void;
 }
 
-export function Dropdown({ attendee }: DropdownProps) {
+export function Dropdown({ attendee, onUpdateList }: DropdownProps) {
 
   function handleCheckIn() {
     const url = new URL(`http://localhost:3333/attendees/${attendee.id}/check-in`);
@@ -14,7 +15,7 @@ export function Dropdown({ attendee }: DropdownProps) {
     fetch(url)
       .then(response => response.json)
       .then(() => {
-        location.reload()
+        onUpdateList();
       })
   }
 
@@ -24,7 +25,7 @@ export function Dropdown({ attendee }: DropdownProps) {
     fetch(url, {
       method: 'DELETE',
     })
-      .then(() => location.reload())
+      .then(() => onUpdateList())
   }
 
   return (

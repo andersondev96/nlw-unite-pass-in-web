@@ -1,8 +1,13 @@
-import * as Dialog from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
-import { FormEvent, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog';
+import { X } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 
-export function Button() {
+interface RegisterAttendeeProps {
+	onRegister: () => void;
+}
+
+
+export function RegisterAttendee({ onRegister }: RegisterAttendeeProps) {
 	const [name, setName] = useState("")
 	const [email, setEmail] = useState("")
 
@@ -28,11 +33,14 @@ export function Button() {
 		.then(response => {
 			if (!response.ok) {
 				console.log(response)
+			} else {
+				onRegister();
 			}
 		})
 		.then(() => {
+			setName("");
+			setEmail("");
 			setIsOpen(false)
-			location.reload()
 		})
 	}
 	return (

@@ -1,11 +1,12 @@
 import dayjs from 'dayjs'
 import 'dayjs/locale/pt-br'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { ArrowDownUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react'
 import { ChangeEvent, useEffect, useState } from 'react'
-import { Button } from './button'
 import { Dropdown } from './dropdown'
 import { IconButton } from './icon-button'
+import { RegisterAttendee } from './register-Attendee'
+import { SortTableHeader } from './table/sort-table-header'
 import { Table } from './table/table'
 import { TableCell } from './table/table-cell'
 import { TableHeader } from './table/table-header'
@@ -23,7 +24,6 @@ export interface Attendee {
 }
 
 export function AttendeeList() {
-	const [orderByColumDirection, setOrderByColumnDirection] = useState(false)
 
 	const [search, setSearch] = useState(() => {
 		const url = new URL(window.location.toString())
@@ -45,12 +45,32 @@ export function AttendeeList() {
 		return 1
 	})
 
+	const [orderByColumn, setOrderByColumn] = useState(() => {
+		const url = new URL(window.location.toString())
+
+		if (url.searchParams.has('orderByColumn')) {
+			return url.searchParams.get('orderByColumn') ?? 'createdAt'
+		}
+
+		return 'createdAt'
+	});
+
+	const [orderByDirection, setOrderByDirection] = useState(() => {
+		const url = new URL(window.location.toString())
+
+		if (url.searchParams.has('orderByDirection')) {
+			return url.searchParams.get('orderByDirection') ?? 'asc'
+		}
+
+		return 'asc'
+	});
+
 	const [total, setTotal] = useState(0)
 	const [attendees, setAttendees] = useState<Attendee[]>([])
 
 	const totalPages = Math.ceil(total / 10)
 
-	useEffect(() => {
+	async function fetchAttendees() {
 		const url = new URL('http://localhost:3333/events/cb0e032a-fd91-440c-8093-34ae7b8566e7/attendees')
 
 		url.searchParams.set('pageIndex', String(page - 1))
@@ -59,14 +79,30 @@ export function AttendeeList() {
 			url.searchParams.set('query', search)
 		}
 
-		fetch(url)
-			.then(response => response.json())
+		url.searchParams.set('orderByColumn', orderByColumn)
+		url.searchParams.set('orderByDirection', orderByDirection)
+
+		const response = await fetch(url)
+		const data = await response.json()
+
+		return data;
+	}
+
+	useEffect(() => {
+		fetchAttendees()
 			.then(data => {
-				console.log(data)
 				setAttendees(data.attendees)
 				setTotal(data.total)
 			})
-	}, [page, search])
+	}, [page, search, orderByColumn, orderByDirection])
+
+	function updateAttendeesList() {
+		fetchAttendees()
+			.then(data => {
+				setAttendees(data.attendees)
+				setTotal(data.total)
+			})
+	}
 
 	function setCurrentSearch(search: string) {
 		const url = new URL(window.location.toString())
@@ -88,18 +124,18 @@ export function AttendeeList() {
 		setPage(page)
 	}
 
-	function orderByColumn(column: string, ascending: boolean = true) {
-		const url = new URL(`http://localhost:3333/events/cb0e032a-fd91-440c-8093-34ae7b8566e7/attendees`)
+	function handleOrderByColumn(column: string) {
+		const url = new URL(window.location.toString())
+
+		const newDirection = column === orderByColumn ? (orderByDirection === 'asc' ? 'desc' : 'asc') : 'asc'
 
 		url.searchParams.set('orderByColumn', column)
-		url.searchParams.set('orderByDirection', ascending ? 'asc' : 'desc')
+		url.searchParams.set('orderByDirection', newDirection)
 
-		fetch(url)
-			.then(response => response.json())
-			.then(data => {
-				setAttendees(data.attendees)
-				setTotal(data.total)
-			})
+		window.history.pushState({}, "", url)
+
+		setOrderByColumn(column)
+		setOrderByDirection(newDirection)
 	}
 
 
@@ -139,7 +175,7 @@ export function AttendeeList() {
 						placeholder="Buscar participantes..."
 					/>
 				</div>
-				<Button />
+				<RegisterAttendee onRegister={updateAttendeesList} />
 			</div>
 
 			<Table>
@@ -148,41 +184,29 @@ export function AttendeeList() {
 						<TableHeader style={{ width: 48 }}>
 							<input type="checkbox" className='size-4 bg-black/20 rounded border border-white/10' />
 						</TableHeader>
+							<SortTableHeader
+								title="Código"
+								column="id" 
+								orderByColumn={orderByColumn}
+								orderByDirection={orderByDirection}
+								onOrderByColumn={handleOrderByColumn}
+							/>
+						<SortTableHeader
+								title="Participantes"
+								column="name" 
+								orderByColumn={orderByColumn}
+								orderByDirection={orderByDirection}
+								onOrderByColumn={handleOrderByColumn}
+							/>
+							<SortTableHeader
+								title="Data de inscrição"
+								column="createdAt" 
+								orderByColumn={orderByColumn}
+								orderByDirection={orderByDirection}
+								onOrderByColumn={handleOrderByColumn}
+							/>
 						<TableHeader>
-							<div className="flex items-center justify-between">
-								Código
-								<ArrowDownUp
-									size={18} 
-									onClick={() => orderByColumn('id', !!orderByColumDirection)}
-									/>
-							</div>
-						</TableHeader>
-						<TableHeader>
-							<div className="flex items-center justify-between">
-								Participantes
-								<ArrowDownUp 
-									size={18} 
-									onClick={() => orderByColumn('name', !!orderByColumDirection)}
-								/>
-							</div>
-						</TableHeader>
-						<TableHeader>
-							<div className="flex items-center justify-between">
-								Data de inscrição
-								<ArrowDownUp 
-									size={18} 
-									onClick={() => orderByColumn('createdAt', !!orderByColumDirection)}
-									/>
-							</div>
-						</TableHeader>
-						<TableHeader>
-							<div className="flex items-center justify-between">
-								Data do check-in
-								<ArrowDownUp 
-									size={18} 
-									onClick={() => orderByColumn('checkedInAt', !!orderByColumDirection)}
-									/>
-							</div>
+							Data do check-in
 						</TableHeader>
 						<TableHeader style={{ width: 64 }}></TableHeader>
 					</tr>
@@ -209,7 +233,7 @@ export function AttendeeList() {
 									}
 								</TableCell>
 								<TableCell>
-									<Dropdown attendee={attendee} />
+									<Dropdown attendee={attendee} onUpdateList={updateAttendeesList} />
 								</TableCell>
 							</TableRow>
 						)
